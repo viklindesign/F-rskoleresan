@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tildes väg till förskolan - Båstad 3D Äventyr</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+        
+        * {
+            font-family: 'Fredoka', cursive, sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .btn-touch {
+            background: linear-gradient(145deg, #fbbf24, #f59e0b);
+            box-shadow: 0 6px 0 #b45309;
+        }
+        .btn-touch:active {
+            box-shadow: 0 2px 0 #b45309;
+            transform: translateY(4px);
+        }
+
+        .btn-jump {
+            background: linear-gradient(145deg, #34d399, #10b981);
+            box-shadow: 0 6px 0 #047857;
+        }
+        .btn-jump:active {
+            box-shadow: 0 2px 0 #047857;
+            transform: translateY(4px);
+        }
+
+        .btn-action {
+            background: linear-gradient(145deg, #f472b6, #ec4899);
+            box-shadow: 0 6px 0 #be185d;
+        }
+        .btn-action:active {
+            box-shadow: 0 2px 0 #be185d;
+            transform: translateY(4px);
+        }
+
+        @keyframes pulse-slow {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .animate-pulse-slow {
+            animation: pulse-slow 1.8s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-b from-sky-400 via-sky-200 to-amber-100 min-h-screen flex flex-col items-center justify-center p-2 md:p-4 text-slate-800">
+
+    <!-- Huvudcontainer -->
+    <div class="w-full max-w-5xl bg-white/90 backdrop-blur-md rounded-3xl p-3 md:p-5 shadow-2xl border-4 border-white flex flex-col items-center">
+        
+        <!-- Header / UI Bar -->
+        <header class="w-full flex flex-wrap justify-between items-center mb-3 gap-2 px-2">
+            <div>
+                <h1 class="text-xl md:text-3xl font-extrabold text-amber-600 tracking-wide flex items-center gap-2">
+                    🎒 Tildes väg till förskolan (3D)
+                </h1>
+                <p class="text-xs md:text-sm text-slate-600 font-semibold flex items-center gap-1">
+                    📍 Båstad: Från Trastvägen 14 till Båstads förskola
+                </p>
+            </div>
+
+            <!-- Samlade Förskolesaker & Båstad-Poäng -->
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-1.5 bg-amber-100/90 px-3 py-1.5 rounded-2xl border-2 border-amber-300 shadow-sm">
+                    <span class="text-xs font-bold text-amber-900 hidden sm:inline">Saker:</span>
+                    <span id="item-boots" class="opacity-25 text-xl transition-all duration-300 transform scale-90" title="Stövlar">👢</span>
+                    <span id="item-teddy" class="opacity-25 text-xl transition-all duration-300 transform scale-90" title="Nalle">🧸</span>
+                    <span id="item-bag" class="opacity-25 text-xl transition-all duration-300 transform scale-90" title="Ryggsäck">🎒</span>
+                    <span id="item-bottle" class="opacity-25 text-xl transition-all duration-300 transform scale-90" title="Vattenflaska">🍼</span>
+                    <span id="item-jacket" class="opacity-25 text-xl transition-all duration-300 transform scale-90" title="Regnjacka">🧥</span>
+                </div>
+                
+                <div class="bg-emerald-100/90 border-2 border-emerald-400 px-3 py-1.5 rounded-2xl font-bold text-emerald-800 text-xs md:text-sm shadow-sm flex items-center gap-1">
+                    ⭐ Poäng: <span id="score-val" class="text-base text-emerald-900">0</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Framstegsmätare (Trastvägen 14 -> Båstads Förskola) -->
+        <div class="w-full bg-slate-200 rounded-full h-4 mb-2 border border-slate-300 overflow-hidden relative shadow-inner">
+            <div id="progress-bar" class="bg-gradient-to-r from-amber-400 to-emerald-500 h-full rounded-full transition-all duration-150" style="width: 0%;"></div>
+            <span class="absolute inset-0 text-[10px] font-bold text-slate-700 flex items-center justify-center pointer-events-none drop-shadow">
+                Trastvägen 14 -----------------------------------------------------> Båstads förskola
+            </span>
+        </div>
+
+        <!-- 3D Canvas Container -->
+        <div class="relative w-full aspect-[16/9] bg-sky-300 rounded-2xl overflow-hidden shadow-inner border-4 border-sky-300/80">
+            <div id="canvas3d" class="w-full h-full"></div>
+
+            <!-- Plats-Meddelande (Båstad Banner) -->
+            <div id="location-banner" class="absolute top-4 left-1/2 -translate-x-1/2 bg-white/95 border-2 border-amber-400 text-amber-900 font-bold px-6 py-1.5 rounded-full shadow-md text-xs md:text-sm opacity-0 transition-opacity duration-500 pointer-events-none">
+                📍 Trastvägen 14, Båstad
+            </div>
+
+            <!-- Speed boost indikator -->
+            <div id="speed-indicator" class="hidden absolute top-4 right-4 bg-yellow-400 text-amber-950 font-black px-3 py-1 rounded-full shadow border-2 border-white text-xs animate-bounce">
+                ⚡ Super-fart från Bjäre-potatis!
+            </div>
+
+            <!-- Interaktions-Prompt -->
+            <div id="action-prompt" class="hidden absolute bottom-16 left-1/2 -translate-x-1/2 bg-amber-400 text-amber-950 font-black px-4 py-2 rounded-2xl shadow-lg text-xs md:text-base border-2 border-white animate-pulse-slow">
+                Tryck på [E] eller 'Handla'-knappen 💬
+            </div>
+
+            <!-- Dialogruta för händelser -->
+            <div id="dialog-box" class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 w-11/12 max-w-md bg-white/95 border-4 border-amber-400 rounded-2xl p-4 shadow-2xl text-center transform transition-all duration-300 z-20">
+                <p id="dialog-text" class="text-sm md:text-lg font-bold text-slate-800 mb-3">Hej Tilde!</p>
+                <button onclick="closeDialog()" class="bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-extrabold px-6 py-2 rounded-full shadow-md text-sm transition">
+                    Ok, vidare! 🚀
+                </button>
+            </div>
+
+            <!-- Vinst-Overlay -->
+            <div id="win-screen" class="hidden absolute inset-0 bg-sky-600/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-white text-center z-30">
+                <div class="text-6xl md:text-8xl mb-2 animate-bounce">🏫🎉</div>
+                <h2 class="text-3xl md:text-5xl font-black mb-2 text-yellow-300 drop-shadow-md">Hurra! Tilde är framme vid förskolan!</h2>
+                <p id="win-message" class="text-sm md:text-xl font-semibold mb-6 max-w-lg text-sky-100">
+                    Du har gått hela vägen från Trastvägen 14 i Båstad!
+                </p>
+                <button onclick="restartGame()" class="bg-yellow-400 hover:bg-yellow-300 text-amber-950 font-black px-8 py-3 rounded-full text-lg shadow-xl active:scale-95 transition border-4 border-white">
+                    Spela igen 🔄
+                </button>
+            </div>
+        </div>
+
+        <!-- Touch-kontroller för mobil/surfplatta -->
+        <div class="w-full flex justify-between items-center mt-3 px-1 md:hidden">
+            <div class="flex gap-2">
+                <button id="btn-left" class="btn-touch w-14 h-14 rounded-2xl text-white font-black text-2xl flex items-center justify-center">
+                    ⬅️
+                </button>
+                <button id="btn-right" class="btn-touch w-14 h-14 rounded-2xl text-white font-black text-2xl flex items-center justify-center">
+                    ➡️
+                </button>
+            </div>
+
+            <div class="flex gap-2">
+                <button id="btn-interact" class="btn-action w-14 h-14 rounded-2xl text-white font-bold text-xs flex flex-col items-center justify-center">
+                    <span class="text-lg">💬</span>
+                    <span>Handla</span>
+                </button>
+                <button id="btn-jump" class="btn-jump w-16 h-14 rounded-2xl text-white font-bold text-xs flex flex-col items-center justify-center">
+                    <span class="text-lg">⬆️</span>
+                    <span>Hoppa</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Tangentbordsinstruktioner (Dator) -->
+        <div class="hidden md:flex justify-between w-full mt-3 text-xs text-slate-600 font-semibold px-2">
+            <span>🎮 Styrning: <kbd class="bg-white border px-2 py-0.5 rounded shadow-sm">Vänster / Höger</kbd> piltangent eller <kbd class="bg-white border px-2 py-0.5 rounded shadow-sm">A / D</kbd></span>
+            <span>🚀 <kbd class="bg-white border px-2 py-0.5 rounded shadow-sm">Upp-pil</kbd> / <kbd class="bg-white border px-2 py-0.5 rounded shadow-sm">Blanksteg</kbd> = Hoppa</span>
+            <span>💬 <kbd class="bg-white border px-2 py-0.5 rounded shadow-sm">E</kbd> = Prata / Interagera</span>
+        </div>
+    </div>
+
+    <script>
+        // --- WEB AUDIO API LJUD ---
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioCtx();
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+
+                if (type === 'jump') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(280, now);
+                    osc.frequency.exponentialRampToValueAtTime(650, now + 0.15);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'collect') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523, now);
+                    osc.frequency.setValueAtTime(659, now + 0.08);
+                    osc.frequency.setValueAtTime(783, now + 0.16);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'boost') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(900, now + 0.3);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'meow') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(650, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+                    osc.frequency.exponentialRampToValueAtTime(480, now + 0.35);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'win') {
+                    const notes = [523, 659, 783, 1046];
+                    notes.forEach((freq, idx) => {
+                        const o = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        o.connect(g);
+                        g.connect(audioCtx.destination);
+                        o.frequency.value = freq;
+                        g.gain.setValueAtTime(0.2, now + idx * 0.12);
+                        g.gain.linearRampToValueAtTime(0.01, now + idx * 0.12 + 0.25);
+                        o.start(now + idx * 0.12);
+                        o.stop(now + idx * 0.12 + 0.25);
+                    });
+                }
+            } catch(e){}
+        }
+
+        // --- THREE.JS SPEL-LOGIK ---
+        let scene, camera, renderer;
+        let tildeGroup, leftLeg, rightLeg, leftArm, rightArm, ponytail, backpackMesh, jacketMesh, bootsMeshGroup;
+        
+        const START_X = 0;
+        const END_X = 220;
+        let playerX = START_X;
+        let playerY = 0;
+        let playerVy = 0;
+        let playerFacingRight = true;
+        let isGrounded = true;
+        let animTime = 0;
+        let score = 0;
+        let speedBoostTimer = 0;
+        let gameWon = false;
+        let activeDialog = false;
+        let currentNearbyEntity = null;
+
+        const keys = { left: false, right: false, up: false };
+
+        // Samlarobjekt i 3D
+        const items = [
+            { id: 'boots', x: 25, type: 'gear', emoji: '👢', name: 'stövlar', grammarMsg: 'Tilde hittade sina stövlar! 👢', collected: false, mesh: null },
+            { id: 'teddy', x: 65, type: 'gear', emoji: '🧸', name: 'nalle', grammarMsg: 'Tilde hittade sin nalle! 🧸', collected: false, mesh: null },
+            { id: 'bottle', x: 110, type: 'gear', emoji: '🍼', name: 'vattenflaska', grammarMsg: 'Tilde hittade sin vattenflaska! 🍼', collected: false, mesh: null },
+            { id: 'jacket', x: 145, type: 'gear', emoji: '🧥', name: 'regnjacka', grammarMsg: 'Tilde hittade sin regnjacka! 🧥', collected: false, mesh: null },
+            { id: 'bag', x: 180, type: 'gear', emoji: '🎒', name: 'ryggsäck', grammarMsg: 'Tilde hittade sin ryggsäck! 🎒', collected: false, mesh: null },
+
+            // Båstad-bonusar
+            { id: 'pot1', x: 15, type: 'potato', grammarMsg: 'Mums! Bjäre-färskpotatis! 🥔 Tilde fick supersnabb fart!', collected: false, mesh: null },
+            { id: 'pot2', x: 125, type: 'potato', grammarMsg: 'Mums! Bjäre-färskpotatis! 🥔 Extra fart igen!', collected: false, mesh: null },
+            { id: 'str1', x: 45, type: 'berry', grammarMsg: 'Tilde hittade ett jättegott jordgubb! 🍓 (+30 poäng)', collected: false, mesh: null },
+            { id: 'str2', x: 160, type: 'berry', grammarMsg: 'Tilde hittade ett till sött jordgubb! 🍓 (+30 poäng)', collected: false, mesh: null },
+            { id: 'ten1', x: 92, type: 'tennis', grammarMsg: 'Tilde plockade upp en tennisboll! 🎾 (+50 poäng)', collected: false, mesh: null }
+        ];
+
+        // Entiteter i 3D
+        const entities = [
+            { x: 20, type: 'cat', dialog: "Mjau! 🐱 Katten Misse spinner glatt när du klappar henne! Hon önskar dig en fin dag på förskolan.", talked: false },
+            { x: 95, type: 'tennis_court', dialog: "Smash! 🎾 Tilde slog ett fantastiskt tennisslag på Centercourten i Båstad! Publiken jublar!", talked: false },
+            { x: 150, type: 'hedgehog', dialog: "🦔 Igelkotten Pigge tackar så mycket för att Tilde hjälpte honom över vägen! (+50 poäng)", talked: false },
+            { x: 50, type: 'banner', label: '🌊 Laholmsbukten & Strandpromenaden' },
+            { x: 90, type: 'banner', label: '🎾 Båstads Tennisstadion (Centercourten)' },
+            { x: 140, type: 'banner', label: '🌺 Norrvikens Trädgårdar' },
+            { x: 210, type: 'banner', label: '🏫 Båstads förskola' }
+        ];
+
+        let animatedBoats = [];
+        let animatedTennisBalls = [];
+
+        function init3D() {
+            const container = document.getElementById('canvas3d');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // Scen
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x7dd3fc); // Himlens färg
+            scene.fog = new THREE.FogExp2(0xbae6fd, 0.0035);
+
+            // Kamera
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(0, 5, 16);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Belysning
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xfffbeb, 0.85);
+            sunLight.position.set(40, 60, 20);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 300;
+            sunLight.shadow.camera.left = -30;
+            sunLight.shadow.camera.right = 30;
+            sunLight.shadow.camera.top = 30;
+            sunLight.shadow.camera.bottom = -10;
+            scene.add(sunLight);
+
+            // --- SKAPA VÄRLDEN ---
+            buildEnvironment();
+
+            // --- SKAPA TILDE 3D-KARAKTÄR ---
+            createTilde3D();
+
+            // Skynda fönsterstorleks-ändring
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function createTilde3D() {
+            tildeGroup = new THREE.Group();
+
+            // Hudmaterial
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xfed7aa, roughness: 0.5 });
+            // Hårmaterial
+            const hairMat = new THREE.MeshStandardMaterial({ color: 0xfde047, roughness: 0.4 });
+            // Jackmaterial
+            const jacketMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3 }); // Gul regnjacka
+            // Stövelmaterial
+            const bootMat = new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.4 }); // Orange stövlar
+            // Ryggsäcksmaterial
+            const bagMat = new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.5 });
+
+            // 1. Huvud
+            const headGeo = new THREE.SphereGeometry(0.55, 16, 16);
+            const head = new THREE.Mesh(headGeo, skinMat);
+            head.position.y = 1.65;
+            head.castShadow = true;
+            tildeGroup.add(head);
+
+            // Hår / Lugger
+            const hairGeo = new THREE.SphereGeometry(0.58, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.5);
+            const hair = new THREE.Mesh(hairGeo, hairMat);
+            hair.position.y = 1.72;
+            hair.rotation.x = -0.2;
+            tildeGroup.add(hair);
+
+            // Hästsvans
+            const ponyGeo = new THREE.ConeGeometry(0.2, 0.6, 12);
+            ponytail = new THREE.Mesh(ponyGeo, hairMat);
+            ponytail.position.set(-0.55, 1.7, 0);
+            ponytail.rotation.z = 1.2;
+            tildeGroup.add(ponytail);
+
+            // Ögon
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+            const eyeGeo = new THREE.SphereGeometry(0.07, 8, 8);
+            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+            leftEye.position.set(0.42, 1.7, 0.22);
+            const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+            rightEye.position.set(0.42, 1.7, -0.22);
+            tildeGroup.add(leftEye);
+            tildeGroup.add(rightEye);
+
+            // 2. Kropp / Regnjacka
+            const bodyGeo = new THREE.CylinderGeometry(0.38, 0.48, 0.9, 14);
+            jacketMesh = new THREE.Mesh(bodyGeo, jacketMat);
+            jacketMesh.position.y = 0.95;
+            jacketMesh.castShadow = true;
+            tildeGroup.add(jacketMesh);
+
+            // 3. Ryggsäck (Döljs tills den plockats upp)
+            const bagGeo = new THREE.BoxGeometry(0.35, 0.5, 0.45);
+            backpackMesh = new THREE.Mesh(bagGeo, bagMat);
+            backpackMesh.position.set(-0.4, 1.0, 0);
+            backpackMesh.castShadow = true;
+            backpackMesh.visible = false;
+            tildeGroup.add(backpackMesh);
+
+            // 4. Armar
+            const armGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.65, 8);
+            armGeo.translate(0, -0.3, 0);
+
+            leftArm = new THREE.Mesh(armGeo, jacketMat);
+            leftArm.position.set(0, 1.25, 0.48);
+            rightArm = new THREE.Mesh(armGeo, jacketMat);
+            rightArm.position.set(0, 1.25, -0.48);
+            tildeGroup.add(leftArm);
+            tildeGroup.add(rightArm);
+
+            // 5. Ben & Stövlar
+            const legGeo = new THREE.CylinderGeometry(0.12, 0.11, 0.6, 8);
+            legGeo.translate(0, -0.3, 0);
+
+            bootsMeshGroup = new THREE.Group();
+
+            leftLeg = new THREE.Mesh(legGeo, bootMat);
+            leftLeg.position.set(0, 0.6, 0.2);
+            leftLeg.castShadow = true;
+
+            rightLeg = new THREE.Mesh(legGeo, bootMat);
+            rightLeg.position.set(0, 0.6, -0.2);
+            rightLeg.castShadow = true;
+
+            tildeGroup.add(leftLeg);
+            tildeGroup.add(rightLeg);
+
+            tildeGroup.position.set(START_X, 0, 0);
+            tildeGroup.rotation.y = Math.PI / 2; // Titta åt höger
+            scene.add(tildeGroup);
+        }
+
+        function buildEnvironment() {
+            // Марк / Gräsmatta
+            const groundGeo = new THREE.BoxGeometry(WORLD_WIDTH_3D(), 2, 40);
+            const groundMat = new THREE.MeshStandardMaterial({ color: 0x4ade80, roughness: 0.8 });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.position.set(END_X / 2, -1, 0);
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Väg / Asfalt
+            const roadGeo = new THREE.BoxGeometry(WORLD_WIDTH_3D(), 0.05, 6);
+            const roadMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.6 });
+            const road = new THREE.Mesh(roadGeo, roadMat);
+            road.position.set(END_X / 2, 0.02, 0);
+            road.receiveShadow = true;
+            scene.add(road);
+
+            // Vita väglinjer
+            for (let x = -10; x < END_X + 20; x += 4) {
+                const stripeGeo = new THREE.BoxGeometry(2, 0.06, 0.25);
+                const stripeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+                stripe.position.set(x, 0.03, 0);
+                scene.add(stripe);
+            }
+
+            // Hallandsåsen (Kullar i bakgrunden)
+            const hillMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.9 });
+            for (let i = 0; i < 8; i++) {
+                const hillGeo = new THREE.SphereGeometry(15 + Math.random() * 10, 16, 16);
+                const hill = new THREE.Mesh(hillGeo, hillMat);
+                hill.position.set(i * 32 - 10, -5, -30 - Math.random() * 10);
+                scene.add(hill);
+            }
+
+            // Laholmsbukten (Havet i bakgrunden vid x=40 till x=80)
+            const seaGeo = new THREE.BoxGeometry(50, 0.1, 30);
+            const seaMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.1, metalness: 0.2 });
+            const sea = new THREE.Mesh(seaGeo, seaMat);
+            sea.position.set(60, -0.2, -18);
+            scene.add(sea);
+
+            // Segelbåtar i havet
+            for (let i = 0; i < 2; i++) {
+                const boatGroup = new THREE.Group();
+                const hullGeo = new THREE.BoxGeometry(2, 0.6, 1);
+                const hullMat = new THREE.MeshStandardMaterial({ color: 0xd97706 });
+                const hull = new THREE.Mesh(hullGeo, hullMat);
+                boatGroup.add(hull);
+
+                const sailGeo = new THREE.ConeGeometry(0.8, 2.5, 4);
+                const sailMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                const sail = new THREE.Mesh(sailGeo, sailMat);
+                sail.position.set(0, 1.4, 0);
+                boatGroup.add(sail);
+
+                boatGroup.position.set(45 + i * 20, 0, -18);
+                scene.add(boatGroup);
+                animatedBoats.push(boatGroup);
+            }
+
+            // Trastvägen 14 Hus (Start)
+            buildHouse(0, 'Trastvägen 14', 0xfef08a);
+
+            // Centercourten Båstad Tennisstadion (vid x=90)
+            buildTennisStadium(90);
+
+            // Norrvikens Trädgårdar (vid x=140)
+            buildNorrvikenGardens(140);
+
+            // Båstads Förskola (Mål vid x=210)
+            buildPreschool(210);
+
+            // Träd och gatu-lampor längs vägen
+            for (let x = 10; x < END_X; x += 12) {
+                if (Math.abs(x - 90) > 15 && Math.abs(x - 140) > 15) {
+                    buildTree(x, -5 - Math.random() * 3);
+                }
+            }
+
+            // Djur (Misse & Pigge i 3D)
+            buildCat(20);
+            buildHedgehog(150);
+
+            // Samlarobjekt i 3D
+            build3DItems();
+        }
+
+        function WORLD_WIDTH_3D() { return END_X + 60; }
+
+        function buildHouse(x, label, wallColor) {
+            const houseGroup = new THREE.Group();
+            // Väggar
+            const wallGeo = new THREE.BoxGeometry(6, 4.5, 5);
+            const wallMat = new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.6 });
+            const walls = new THREE.Mesh(wallGeo, wallMat);
+            walls.position.y = 2.25;
+            walls.castShadow = true;
+            houseGroup.add(walls);
+
+            // Tak
+            const roofGeo = new THREE.ConeGeometry(4.8, 2.5, 4);
+            const roofMat = new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.5 });
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.y = 5.7;
+            roof.rotation.y = Math.PI / 4;
+            roof.castShadow = true;
+            houseGroup.add(roof);
+
+            // Trastvägen 14 skylt
+            const signGeo = new THREE.BoxGeometry(2.2, 0.8, 0.1);
+            const signMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+            const sign = new THREE.Mesh(signGeo, signMat);
+            sign.position.set(0, 3.2, 2.56);
+            houseGroup.add(sign);
+
+            houseGroup.position.set(x, 0, -5);
+            scene.add(houseGroup);
+        }
+
+        function buildTennisStadium(x) {
+            const stadiumGroup = new THREE.Group();
+            // Bana
+            const courtGeo = new THREE.BoxGeometry(16, 0.1, 10);
+            const courtMat = new THREE.MeshStandardMaterial({ color: 0xc2410c, roughness: 0.5 });
+            const court = new THREE.Mesh(courtGeo, courtMat);
+            court.position.y = 0.05;
+            stadiumGroup.add(court);
+
+            // Nät
+            const netGeo = new THREE.BoxGeometry(0.1, 1.2, 10);
+            const netMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
+            const net = new THREE.Mesh(netGeo, netMat);
+            net.position.y = 0.6;
+            stadiumGroup.add(net);
+
+            // Läktare
+            const standGeo = new THREE.BoxGeometry(16, 3, 4);
+            const standMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.7 });
+            const stand = new THREE.Mesh(standGeo, standMat);
+            stand.position.set(0, 1.5, -6.5);
+            stadiumGroup.add(stand);
+
+            stadiumGroup.position.set(x, 0, -4);
+            scene.add(stadiumGroup);
+        }
+
+        function buildNorrvikenGardens(x) {
+            const gardenGroup = new THREE.Group();
+            const colors = [0xec4899, 0xa855f7, 0xfacc15, 0xef4444];
+            for (let i = 0; i < 20; i++) {
+                const flowerGeo = new THREE.DodecahedronGeometry(0.35);
+                const flowerMat = new THREE.MeshStandardMaterial({ color: colors[i % colors.length] });
+                const flower = new THREE.Mesh(flowerGeo, flowerMat);
+                flower.position.set((Math.random() - 0.5) * 14, 0.3, (Math.random() - 0.5) * 6);
+                gardenGroup.add(flower);
+            }
+            gardenGroup.position.set(x, 0, -4.5);
+            scene.add(gardenGroup);
+        }
+
+        function buildPreschool(x) {
+            const preGroup = new THREE.Group();
+            // Byggnad
+            const bldGeo = new THREE.BoxGeometry(12, 6, 8);
+            const bldMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.5 });
+            const bld = new THREE.Mesh(bldGeo, bldMat);
+            bld.position.y = 3;
+            bld.castShadow = true;
+            preGroup.add(bld);
+
+            // Blått tak
+            const roofGeo = new THREE.BoxGeometry(13, 1, 9);
+            const roofMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6 });
+            const roof = new THREE.Mesh(roofGeo, roofMat);
+            roof.position.y = 6.5;
+            preGroup.add(roof);
+
+            // Svensk Flagga
+            const poleGeo = new THREE.CylinderGeometry(0.08, 0.08, 7, 8);
+            const poleMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            const pole = new THREE.Mesh(poleGeo, poleMat);
+            pole.position.set(-5, 3.5, 4.5);
+            preGroup.add(pole);
+
+            const flagGeo = new THREE.BoxGeometry(1.6, 1, 0.05);
+            const flagMat = new THREE.MeshBasicMaterial({ color: 0x0284c7 });
+            const flag = new THREE.Mesh(flagGeo, flagMat);
+            flag.position.set(-4.2, 6.4, 4.5);
+            preGroup.add(flag);
+
+            preGroup.position.set(x, 0, -5.5);
+            scene.add(preGroup);
+        }
+
+        function buildTree(x, z) {
+            const treeGroup = new THREE.Group();
+            const trunkGeo = new THREE.CylinderGeometry(0.25, 0.35, 2.5, 8);
+            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
+            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+            trunk.position.y = 1.25;
+            treeGroup.add(trunk);
+
+            const leavesGeo = new THREE.DodecahedronGeometry(1.6);
+            const leavesMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.6 });
+            const leaves = new THREE.Mesh(leavesGeo, leavesMat);
+            leaves.position.y = 3.2;
+            leaves.castShadow = true;
+            treeGroup.add(leaves);
+
+            treeGroup.position.set(x, 0, z);
+            scene.add(treeGroup);
+        }
+
+        function buildCat(x) {
+            const catGroup = new THREE.Group();
+            const bodyGeo = new THREE.SphereGeometry(0.35, 12, 12);
+            const catMat = new THREE.MeshStandardMaterial({ color: 0xf97316 });
+            const body = new THREE.Mesh(bodyGeo, catMat);
+            body.position.y = 0.35;
+            catGroup.add(body);
+
+            const headGeo = new THREE.SphereGeometry(0.25, 12, 12);
+            const head = new THREE.Mesh(headGeo, catMat);
+            head.position.set(0.3, 0.55, 0);
+            catGroup.add(head);
+
+            catGroup.position.set(x, 0, 1.8);
+            scene.add(catGroup);
+        }
+
+        function buildHedgehog(x) {
+            const hgGroup = new THREE.Group();
+            const bodyGeo = new THREE.SphereGeometry(0.3, 10, 10);
+            const hgMat = new THREE.MeshStandardMaterial({ color: 0x78350f });
+            const body = new THREE.Mesh(bodyGeo, hgMat);
+            body.position.y = 0.3;
+            hgGroup.add(body);
+
+            hgGroup.position.set(x, 0, 1.8);
+            scene.add(hgGroup);
+        }
+
+        function build3DItems() {
+            items.forEach(item => {
+                let geo, mat;
+                if (item.id === 'boots') {
+                    geo = new THREE.BoxGeometry(0.5, 0.6, 0.5);
+                    mat = new THREE.MeshStandardMaterial({ color: 0xea580c });
+                } else if (item.id === 'teddy') {
+                    geo = new THREE.SphereGeometry(0.4, 12, 12);
+                    mat = new THREE.MeshStandardMaterial({ color: 0xb45309 });
+                } else if (item.id === 'bottle') {
+                    geo = new THREE.CylinderGeometry(0.2, 0.2, 0.7, 10);
+                    mat = new THREE.MeshStandardMaterial({ color: 0x38bdf8 });
+                } else if (item.id === 'jacket') {
+                    geo = new THREE.BoxGeometry(0.6, 0.6, 0.4);
+                    mat = new THREE.MeshStandardMaterial({ color: 0xfacc15 });
+                } else if (item.id === 'bag') {
+                    geo = new THREE.BoxGeometry(0.5, 0.7, 0.4);
+                    mat = new THREE.MeshStandardMaterial({ color: 0xec4899 });
+                } else if (item.type === 'potato') {
+                    geo = new THREE.DodecahedronGeometry(0.35);
+                    mat = new THREE.MeshStandardMaterial({ color: 0xd97706 });
+                } else if (item.type === 'berry') {
+                    geo = new THREE.SphereGeometry(0.3, 10, 10);
+                    mat = new THREE.MeshStandardMaterial({ color: 0xef4444 });
+                } else if (item.type === 'tennis') {
+                    geo = new THREE.SphereGeometry(0.28, 12, 12);
+                    mat = new THREE.MeshStandardMaterial({ color: 0xccff00 });
+                }
+
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.set(item.x, 0.8, 0);
+                mesh.castShadow = true;
+                scene.add(mesh);
+                item.mesh = mesh;
+            });
+        }
+
+        // --- TANGENTBORD & KONTROLLER ---
+        window.addEventListener('keydown', (e) => {
+            initAudio();
+            if (activeDialog) return;
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') {
+                keys.up = true;
+                e.preventDefault();
+            }
+            if (e.key === 'e' || e.key === 'E') {
+                interactWithNearby();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') keys.up = false;
+        });
+
+        const bindTouch = (id, keyName) => {
+            const btn = document.getElementById(id);
+            const start = (e) => { e.preventDefault(); initAudio(); if(keyName==='interact') interactWithNearby(); else keys[keyName] = true; };
+            const end = (e) => { e.preventDefault(); if(keyName!=='interact') keys[keyName] = false; };
+            btn.addEventListener('touchstart', start);
+            btn.addEventListener('touchend', end);
+            btn.addEventListener('mousedown', start);
+            btn.addEventListener('mouseup', end);
+        };
+
+        bindTouch('btn-left', 'left');
+        bindTouch('btn-right', 'right');
+        bindTouch('btn-jump', 'up');
+        bindTouch('btn-interact', 'interact');
+
+        function interactWithNearby() {
+            if (currentNearbyEntity) {
+                showDialog(currentNearbyEntity.dialog);
+                if (currentNearbyEntity.type === 'cat' && !currentNearbyEntity.talked) {
+                    currentNearbyEntity.talked = true;
+                    playSound('meow');
+                    addScore(30);
+                }
+                if (currentNearbyEntity.type === 'hedgehog' && !currentNearbyEntity.talked) {
+                    currentNearbyEntity.talked = true;
+                    addScore(50);
+                }
+                if (currentNearbyEntity.type === 'tennis_court' && !currentNearbyEntity.talked) {
+                    currentNearbyEntity.talked = true;
+                    playSound('boost');
+                    addScore(100);
+                }
+            }
+        }
+
+        function showDialog(text) {
+            document.getElementById('dialog-text').innerText = text;
+            document.getElementById('dialog-box').classList.remove('hidden');
+            activeDialog = true;
+            keys.left = keys.right = keys.up = false;
+        }
+
+        function closeDialog() {
+            document.getElementById('dialog-box').classList.add('hidden');
+            activeDialog = false;
+        }
+
+        function addScore(pts) {
+            score += pts;
+            document.getElementById('score-val').innerText = score;
+        }
+
+        // --- HUVUDOPPDATERING & ANIMATION ---
+        function updateGame() {
+            if (gameWon || activeDialog) return;
+
+            let moveSpeed = 0.22;
+
+            // Potatis-fartboost
+            const speedInd = document.getElementById('speed-indicator');
+            if (speedBoostTimer > 0) {
+                speedBoostTimer--;
+                moveSpeed *= 1.5;
+                speedInd.classList.remove('hidden');
+            } else {
+                speedInd.classList.add('hidden');
+            }
+
+            // Horisontell förflyttning
+            let isMoving = false;
+            if (keys.left) {
+                playerX -= moveSpeed;
+                playerFacingRight = false;
+                isMoving = true;
+            } else if (keys.right) {
+                playerX += moveSpeed;
+                playerFacingRight = true;
+                isMoving = true;
+            }
+
+            // Gränser
+            if (playerX < START_X) playerX = START_X;
+            if (playerX > END_X) playerX = END_X;
+
+            // Hopp & Fysik
+            if (keys.up && isGrounded) {
+                playerVy = 0.42;
+                isGrounded = false;
+                playSound('jump');
+            }
+
+            playerY += playerVy;
+            playerVy -= 0.022; // Gravitation
+
+            if (playerY <= 0) {
+                playerY = 0;
+                playerVy = 0;
+                isGrounded = true;
+            }
+
+            // Uppdatera Tilde 3D Position & Riktning
+            tildeGroup.position.set(playerX, playerY, 0);
+            tildeGroup.rotation.y = playerFacingRight ? Math.PI / 2 : -Math.PI / 2;
+
+            // Gånganimation
+            if (isMoving && isGrounded) {
+                animTime += 0.25;
+                leftLeg.rotation.z = Math.sin(animTime) * 0.6;
+                rightLeg.rotation.z = -Math.sin(animTime) * 0.6;
+                leftArm.rotation.z = -Math.sin(animTime) * 0.6;
+                rightArm.rotation.z = Math.sin(animTime) * 0.6;
+                ponytail.rotation.x = Math.sin(animTime * 2) * 0.2;
+            } else {
+                leftLeg.rotation.z = 0;
+                rightLeg.rotation.z = 0;
+                leftArm.rotation.z = 0;
+                rightArm.rotation.z = 0;
+            }
+
+            // Kamera följer Tilde i 3D
+            camera.position.x = playerX + 2;
+            camera.position.y = 4.5 + playerY * 0.3;
+            camera.lookAt(playerX + 2, 2, 0);
+
+            // Framstegsmätare
+            const progress = Math.min(100, Math.max(0, (playerX / END_X) * 100));
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+
+            // Rotera samlarobjekt
+            items.forEach(item => {
+                if (item.mesh && !item.collected) {
+                    item.mesh.rotation.y += 0.03;
+                    
+                    // Kollision
+                    if (Math.abs(playerX - item.x) < 1.2 && playerY < 1.5) {
+                        item.collected = true;
+                        item.mesh.visible = false;
+
+                        if (item.type === 'gear') {
+                            playSound('collect');
+                            addScore(100);
+                            document.getElementById(`item-${item.id}`).classList.remove('opacity-25', 'scale-90');
+                            document.getElementById(`item-${item.id}`).classList.add('scale-125', 'opacity-100');
+                            
+                            if (item.id === 'bag') backpackMesh.visible = true;
+                            showDialog(item.grammarMsg);
+                        } else if (item.type === 'potato') {
+                            playSound('boost');
+                            addScore(40);
+                            speedBoostTimer = 180;
+                            showDialog(item.grammarMsg);
+                        } else if (item.type === 'berry' || item.type === 'tennis') {
+                            playSound('collect');
+                            addScore(item.type === 'berry' ? 30 : 50);
+                            showDialog(item.grammarMsg);
+                        }
+                    }
+                }
+            });
+
+            // Närliggande entiteter / Banners
+            let promptTarget = null;
+            entities.forEach(ent => {
+                if (ent.dialog && Math.abs(playerX - ent.x) < 2.2) {
+                    promptTarget = ent;
+                }
+                if (ent.type === 'banner' && Math.abs(playerX - ent.x) < 6) {
+                    const banner = document.getElementById('location-banner');
+                    banner.innerText = ent.label;
+                    banner.style.opacity = '1';
+                }
+            });
+
+            currentNearbyEntity = promptTarget;
+            const promptEl = document.getElementById('action-prompt');
+            if (currentNearbyEntity) promptEl.classList.remove('hidden');
+            else promptEl.classList.add('hidden');
+
+            // Segelbåtar rörelse
+            animatedBoats.forEach(b => {
+                b.position.x += 0.03;
+                if (b.position.x > 100) b.position.x = 35;
+            });
+
+            // Vinstkollision
+            if (playerX >= END_X - 2) {
+                triggerWin3D();
+            }
+        }
+
+        function triggerWin3D() {
+            gameWon = true;
+            playSound('win');
+            const gearCollected = items.filter(i => i.type === 'gear' && i.collected).length;
+            let msg = `Tilde kom fram till Båstads förskola med ${gearCollected} av 5 saker! Du fick ${score} poäng!`;
+            if (gearCollected === 5) msg += " Alla saker kom med till förskolan! 🎒👢🧸🍼🧥";
+            
+            document.getElementById('win-message').innerText = msg;
+            document.getElementById('win-screen').classList.remove('hidden');
+        }
+
+        function restartGame() {
+            playerX = START_X;
+            playerY = 0;
+            score = 0;
+            speedBoostTimer = 0;
+            gameWon = false;
+            document.getElementById('score-val').innerText = '0';
+
+            items.forEach(i => {
+                i.collected = false;
+                if (i.mesh) i.mesh.visible = true;
+            });
+            entities.forEach(e => { if(e.talked) e.talked = false; });
+
+            ['boots', 'teddy', 'bag', 'bottle', 'jacket'].forEach(id => {
+                const el = document.getElementById(`item-${id}`);
+                el.classList.add('opacity-25', 'scale-90');
+                el.classList.remove('scale-125', 'opacity-100');
+            });
+
+            backpackMesh.visible = false;
+            document.getElementById('win-screen').classList.add('hidden');
+            closeDialog();
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas3d');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animateLoop() {
+            requestAnimationFrame(animateLoop);
+            updateGame();
+            renderer.render(scene, camera);
+        }
+
+        window.onload = function() {
+            init3D();
+            animateLoop();
+        };
+    </script>
+</body>
+</html>
